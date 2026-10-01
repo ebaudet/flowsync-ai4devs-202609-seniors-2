@@ -35,10 +35,11 @@ Restricciones de este change, no negociables:
 
 Decisiones de producto sin tomar que este change **no resuelve ni inventa**:
 
-- **Orden de la lista (PA-3).** No hay criterio de ordenación ni de agrupación por persona: la API no ordena explícitamente y la interfaz muestra las tareas en el orden en que llegan. El orden resultante no es una garantía de comportamiento. Sin él, la promesa de E3-1 CA-5 («enumerar el trabajo de cada persona») no se sostiene con volumen.
+- **Orden de la lista (PA-3).** No hay criterio de ordenación ni de agrupación por persona: la API no ordena explícitamente y la interfaz muestra las tareas en el orden en que llegan. El orden resultante no es una garantía de comportamiento: una tarea recién creada se añade al final de la lista en pantalla y, tras recargar, puede aparecer en otro sitio. Sin él, la promesa de E3-1 CA-5 («enumerar el trabajo de cada persona») no se sostiene con volumen.
 - **Transiciones de estado (PA-7).** Se admite pasar de cualquier estado a cualquiera de los tres, incluido volver atrás desde Hecho, porque ningún requisito declara un grafo. Cambiar a Hecho no pide confirmación.
 - **Umbral del título (PA-9).** La frontera de 255 caracteres es un valor de ingeniería elegido para poder avisar en lugar de recortar (E2-2 CA-3, criterio PROPUESTO), no una decisión de producto.
 - **Reasignar el responsable.** Queda fuera (E2-7): el responsable se fija al crear y esta versión de la API no permite cambiarlo. Los criterios de «cualquier persona puede cambiar el responsable de cualquier tarea» se cubren cuando exista esa historia y un modo de identificar a las personas, que hoy ningún endpoint ofrece.
+- **Responsables indistinguibles.** Al identificar al responsable solo por su nombre, dos personas con el mismo nombre, o varias sin nombre ("Sin nombre"), no se distinguen en la lista. Es consecuencia de la restricción y no se resuelve aquí (E3-1 CA-5 y CA-6).
 - **Lista que se refresca sola (E3-2) y número de tareas En curso por persona (PA-4):** fuera de alcance.
 
 ## Impact

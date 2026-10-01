@@ -244,6 +244,11 @@ La aplicación SHALL mostrar en `/tasks` a la persona con sesión abierta una so
 - **WHEN** una persona busca otras vistas de tareas en la aplicación
 - **THEN** no hay ninguna vista «mis tareas» ni filtro por persona, y no ve ninguna señal de quién está conectado
 
+#### Scenario: Acceso al perfil
+
+- **WHEN** una persona con sesión mira la cabecera de `/tasks`
+- **THEN** ve un enlace "Mi perfil" que lleva a `/profile`, desde donde puede cerrar sesión
+
 #### Scenario: Mirar no cambia nada
 
 - **WHEN** una persona abre `/tasks` y recorre la lista
@@ -261,7 +266,17 @@ La aplicación SHALL indicar que la lista se está cargando y SHALL mostrar un a
 #### Scenario: Servidor inaccesible
 
 - **WHEN** una persona abre `/tasks` y el servidor no responde
-- **THEN** ve el aviso "No se pudo conectar con el servidor. Comprueba que el backend está arrancado." y no ve ninguna tarea
+- **THEN** ve el aviso "No se pudo conectar con el servidor. Comprueba que el backend está arrancado." y no ve ninguna tarea, ni el estado vacío, ni el formulario de creación
+
+#### Scenario: Error del servidor al cargar
+
+- **WHEN** una persona abre `/tasks` y el servidor responde con un error interno
+- **THEN** ve el aviso "Algo ha ido mal en el servidor. Inténtalo de nuevo en un momento." y no ve ninguna tarea ni el estado vacío
+
+#### Scenario: Sesión caducada al cargar
+
+- **WHEN** una persona abre `/tasks` y el servidor rechaza su sesión
+- **THEN** ve el aviso "Tu sesión ha caducado. Vuelve a iniciar sesión." y no ve ninguna tarea
 
 ### Requirement: Estado vacío de la lista
 

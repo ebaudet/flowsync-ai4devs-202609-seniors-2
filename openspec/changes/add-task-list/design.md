@@ -27,7 +27,7 @@ Estado actual observado (ver `proposal.md` para la motivación):
 
 Migración nueva `tasks`: `id`, `title` (`string`, 255, not null), `status` (`string`, not null, por defecto `pending`), `assignee_id` (entero, not null, referencia a `users.id`), `created_at`, `updated_at`. **Sin columna de fecha de vencimiento** (restricción 1); las marcas de tiempo son las convencionales de la tabla y **no se exponen** por la API.
 
-- El conjunto de estados se define **una vez** en el backend (constante `TASK_STATUSES = ['pending', 'in_progress', 'done']`) y alimenta el validador. Si el generador de esquema lo admite vía `schema_rules.ts` (`ColumnInfo.tsType`), la columna `status` se tipa como unión literal; si no, el tipo se estrecha en el modelo.
+- El conjunto de estados se define **una vez** en el backend (constante `TASK_STATUSES = ['pending', 'in_progress', 'done']`) y alimenta el validador. Si el generador de esquema lo admite vía `schema_rules.ts` (`ColumnInfo.tsType`, acotado con `tables.tasks.columns.status` para no afectar a otras tablas), la columna `status` se tipa como unión literal; si no, el tipo se estrecha en el modelo.
 - *Alternativas*: `enum` nativo de base de datos (SQLite no lo soporta de verdad; `knex` lo emula con `CHECK` y complica migrar el conjunto) y tabla `statuses` (contradice «conjunto cerrado, no se añaden estados»). Se descarta ambas.
 - Ejecutar `node ace migration:run` regenera `database/schema.ts`; ese diff se commitea.
 
@@ -45,7 +45,7 @@ Migración nueva `tasks`: `id`, `title` (`string`, 255, not null), `status` (`st
 
 `Task` = `{ id, title, status, assignee: { fullName: string | null } }`. Rutas dentro de un grupo `tasks` bajo `/api/v1` con `middleware.auth()`, registradas con `router.get/post/patch` y **sin** `router.resource`, para que `GET /:id` y `DELETE /:id` no existan (404 de ruta no encontrada). Un único `TasksController` con `index`, `store` y `update`.
 
-- **Creación**: `title` y responsable = `auth.getUserOrFail()`; `status` queda al valor por defecto de la columna. El validador solo declara `title`, y VineJS descarta los campos desconocidos (`status`, `assignee`, fechas), por lo que quedan ignorados sin código adicional.
+- **Creación**: `title` y responsable = `auth.getUserOrFail()`; `status` queda al valor por defecto de la columna. Lucid solo devuelve la clave primaria tras el INSERT, así que el controlador hace `await task.refresh()` y `await task.load('assignee')` antes de serializar: el 201 debe llevar `status` y `assignee` ya poblados. El validador solo declara `title`, y VineJS descarta los campos desconocidos (`status`, `assignee`, fechas), por lo que quedan ignorados sin código adicional.
 - **Actualización**: el validador declara solo `status` (`vine.enum(TASK_STATUSES)`); `Task.findOrFail(id)` da el 404 y no se comprueba propiedad (restricción 5). Responde la tarea con el responsable precargado.
 - **Responsable**: `TaskTransformer` expone `assignee` a través de un `TaskAssigneeTransformer` que hace `pick` solo de `fullName`; nunca `UserTransformer`, que filtraría email, id y fechas (nota de implementación de E3-1). Si se sacara `UserTransformer` por comodidad, la spec (`El responsable no revela datos de cuenta`) lo detecta en revisión.
 - **Orden**: la consulta del listado **no lleva `orderBy`** (restricción 4); el orden es el que devuelva la base de datos y no se promete.
@@ -64,11 +64,13 @@ Migración nueva `tasks`: `id`, `title` (`string`, 255, not null), `status` (`st
 
 ### 6. Comportamiento de la interfaz
 
-- **Crear**: se recorta el título en cliente; si queda vacío se muestra «Falta rellenar el título.» sin petición (se reutiliza `failWith` de `useAuthForm`, que ya reparte errores por campo; su nombre es de auth pero la lógica es genérica). El `Input` **no** lleva `maxLength`: bloquear la escritura sería un recorte silencioso; el aviso lo da el 422 (`maxLength` → mensaje existente en `translate`). Con éxito, la tarea de la respuesta se **añade al final** del estado local (sin refetch) y el campo se vacía. Con error se conserva el texto.
+- **Crear**: se recorta el título en cliente; si queda vacío se muestra «Falta rellenar el título.» sin petición (se reutiliza `failWith` de `useAuthForm`, que ya reparte errores por campo; su nombre es de auth pero la lógica es genérica). El `Input` **no** lleva `maxLength`: bloquear la escritura sería un recorte silencioso; el aviso lo da el 422 (`maxLength` → mensaje existente en `translate`). Con éxito, la tarea de la respuesta se **añade al final** del estado local (sin refetch) y el campo se vacía. Con error se conserva el texto. La posición «al final» es una consecuencia de no ordenar, no una regla: ver Puntos abiertos.
 - **Cambiar estado**: actualización **optimista**: la fila cambia al instante y, si la petición falla, vuelve al estado anterior y aparece un `Alert`. Cada fila bloquea su propio control mientras su petición está en vuelo para no encadenar cambios cruzados.
 - **Estado vacío**: tarjeta con texto explicativo y el formulario de creación. El formulario es el mismo componente en vacío y con tareas.
 - **Sin fechas**: `Task` no tiene campos de fecha en el tipo, así que ni se puede pintar ni se prepara.
-- **Responsable**: `assignee.fullName ?? 'Sin nombre'`.
+- **Responsable**: `assignee.fullName?.trim() || 'Sin nombre'`: el backend no recorta `fullName`, así que por API directa puede existir un nombre en blanco, que se pinta como «Sin nombre».
+- **Carga fallida**: si `GET /tasks` falla (conexión, 500 o 401) se muestra solo el `Alert` con el mensaje; no se muestra ni la lista, ni el estado vacío (afirmaría «no hay tareas» sin saberlo) ni el formulario. No hay reintento: se recarga la página.
+- **Enlace al perfil**: la cabecera de `/tasks` lleva un enlace «Mi perfil»; es el único camino a «Cerrar sesión» desde la portada.
 
 ### 7. Documentación y código generado
 
