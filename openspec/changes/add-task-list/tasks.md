@@ -1,0 +1,33 @@
+# Tasks
+
+Sin tests en este change (ni base de pruebas ni ficheros de test). Cada tarea se verifica con un comando o una comprobación manual concreta. Los comandos se ejecutan desde `backend/` o `frontend/`, nunca desde la raíz.
+
+## 1. Datos del backend
+
+- [ ] 1.1 Crear la migración de la tabla `tasks` (`id`, `title` string 255 not null, `status` string not null con valor por defecto `pending`, `assignee_id` entero not null referenciando `users.id`, `created_at`, `updated_at`; sin ninguna columna de fecha de vencimiento), con su `down`. Verificar con `node ace migration:run` (sale «migrated») y comprobando que `database/schema.ts` se regenera con una clase `TaskSchema` sin columna de vencimiento.
+- [ ] 1.2 Definir la constante `TASK_STATUSES = ['pending', 'in_progress', 'done']` y crear el modelo `Task` (extiende `TaskSchema`, relación `@belongsTo` hacia `User` como `assignee`); tipar `status` como unión literal, bien en `database/schema_rules.ts`, bien en el modelo según lo que admitan los `.d.ts` de `@adonisjs/lucid`. Verificar con `npm run typecheck` sin errores.
+
+## 2. API de tareas
+
+- [ ] 2.1 Crear los validadores en `app/validators/` (`createTaskValidator`: `title` con `vine.string().trim().minLength(1).maxLength(255)`; `updateTaskValidator`: `status` con `vine.enum(TASK_STATUSES)`), con `vine.create` como los de usuario. Verificar con `npm run typecheck`.
+- [ ] 2.2 Crear `TaskTransformer` y un transformer del responsable que haga `pick` solo de `fullName` (nunca `UserTransformer`), exponiendo la tarea como `{ id, title, status, assignee: { fullName } }`, sin campos de fecha. Verificar con `npm run typecheck` y revisando que ningún transformer de tarea referencia `email`, `id` del usuario ni fechas.
+- [ ] 2.3 Crear `TasksController` con `index` (todas las tareas con `preload('assignee')`, **sin `orderBy`**), `store` (título validado, responsable = usuario autenticado, estado por defecto, respuesta 201) y `update` (`Task.findOrFail`, solo `status`, sin comprobar propiedad). Verificar con `npm run typecheck` y `npm run lint`.
+- [ ] 2.4 Registrar en `start/routes.ts`, dentro de `/api/v1` y con `middleware.auth()`, exactamente `GET /tasks`, `POST /tasks` y `PATCH /tasks/:id` (sin `router.resource`); arrancar con `npm run dev` para regenerar `.adonisjs/` y commitear el diff. Verificar con `node ace list:routes` (aparecen solo esas tres rutas de tareas) y comprobando que `.adonisjs/server/controllers.ts` incluye `Tasks`.
+- [ ] 2.5 Verificar manualmente con `curl` cada escenario de la spec `tasks` que afecta a la API, usando dos cuentas de prueba (una con nombre y otra sin él): lista vacía y con tareas; creación con solo `title` (201, `pending`, responsable = quien crea, `fullName` `null` para la cuenta sin nombre); datos extra ignorados (`status`, `assignee`, fecha); `title` ausente, `""`, `"   "` y de 256 caracteres → 422 y nada creado; 255 caracteres → 201; `PATCH` con los tres estados y con `"pendiente"` o sin `status` → 422; `PATCH` de la tarea de la otra cuenta → 200; id inexistente → 404; `GET /tasks/1` y `DELETE /tasks/1` → 404; las tres operaciones sin `Authorization` → 401; el JSON de una tarea no contiene `email`, id de usuario ni fechas.
+
+## 3. Cliente de la API en el frontend
+
+- [ ] 3.1 En `lib/types.ts` añadir `TaskStatus`, `Task` (`id`, `title`, `status`, `assignee: { fullName: string | null }`, sin campos de fecha) y el mapa `TASK_STATUS_LABEL` (`pending` → Pendiente, `in_progress` → En curso, `done` → Hecho). Verificar con `npm run build`.
+- [ ] 3.2 En `lib/api.ts` ampliar `RequestOptions.method` con `'PATCH'`, añadir `title` a `FIELD_LABELS` («el título») y exponer `listTasks`, `createTask` y `updateTaskStatus`, desenvolviendo `{ data }` como el resto. Verificar con `npm run build` y `npm run lint`.
+
+## 4. Pantalla de tareas y navegación
+
+- [ ] 4.1 Crear `components/create-task-form.tsx`: un único campo «Título» y el botón «Crear tarea» (deshabilitado durante el envío), con recorte del título en cliente y «Falta rellenar el título.» sin petición si queda vacío (reutilizando `useAuthForm`/`failWith`), **sin `maxLength` en el input**, sin ningún control de responsable, estado ni fecha, y conservando el texto si la petición falla. Verificar con `npm run build` y `npm run lint`, y a mano en `npm run dev`: título vacío, solo espacios y de 256 caracteres muestran el mensaje bajo el campo y no crean nada.
+- [ ] 4.2 Crear `components/task-status-control.tsx` y `components/task-row.tsx`: fila con título, responsable (`assignee.fullName ?? 'Sin nombre'`) y estado, y tres `Button` «Pendiente», «En curso» y «Hecho» con el actual destacado y `aria-pressed`, sin diálogo, usando solo componentes ya existentes de `components/ui/`. Verificar con `npm run build` y `npm run lint`, y comprobando que no aparece ninguna fecha, email, id ni marca de vencida en la fila.
+- [ ] 4.3 Crear `pages/tasks-page.tsx` siguiendo el patrón de las páginas de auth: carga con indicador, aviso de error si falla (`Alert`), lista de filas en el orden recibido (sin ordenar), estado vacío con texto explicativo y el formulario, adición local de la tarea creada sin refetch y cambio de estado optimista con vuelta atrás y aviso si falla. Verificar con `npm run build` y `npm run lint`.
+- [ ] 4.4 En `routes/app-routes.tsx` añadir `/tasks` dentro de `ProtectedRoute`; en `public-only-route.tsx` y en el comodín `*` redirigir a `/tasks`; añadir el enlace «Volver a las tareas» en `pages/profile-page.tsx` y un enlace al perfil en la pantalla de tareas. Verificar con `npm run build` y a mano: sin sesión `/tasks` lleva a `/login`; con sesión `/login`, `/register` y una dirección inexistente llevan a `/tasks`; tras iniciar sesión y tras registrarse se aterriza en `/tasks`.
+
+## 5. Documentación e integración
+
+- [ ] 5.1 Actualizar la tabla de rutas de `CLAUDE.md` con `GET /api/v1/tasks`, `POST /api/v1/tasks` y `PATCH /api/v1/tasks/:id` (autenticadas) y ajustar su nota de que el único dominio es el usuario. Verificar releyendo la tabla frente a la salida de `node ace list:routes`.
+- [ ] 5.2 Recorrido manual de extremo a extremo con `npm run dev` en `backend/` y `frontend/` y dos navegadores (o ventana privada) con dos cuentas: la tarea de una se ve en la lista de la otra; cada fila muestra título, responsable por nombre («Sin nombre» para la cuenta sin nombre) y estado en castellano; cambiar estados desde la fila persiste al recargar y se aplica a tareas ajenas; el estado vacío se ve con la base sin tareas; con el backend parado aparece el aviso de conexión. Verificar con `npm run build`, `npm run lint` en `frontend/` y `npm run typecheck` y `npm run lint` en `backend/` sin errores.
