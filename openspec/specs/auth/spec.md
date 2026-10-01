@@ -37,11 +37,11 @@ El sistema SHALL rechazar con 422 cualquier registro cuyos datos no cumplan las 
 #### Scenario: Contraseña fuera de longitud
 
 - **WHEN** se envía el registro con una `password` de menos de 8 o de más de 32 caracteres
-- **THEN** la respuesta es 422 con un error de longitud sobre `password` y otro sobre `passwordConfirmation`
+- **THEN** la respuesta es 422 con un error de longitud sobre `password`, y además otro sobre `passwordConfirmation` si esta también tiene una longitud fuera de rango (si no, el error adicional es de regla `sameAs` cuando ambas difieren)
 
 #### Scenario: Confirmación distinta
 
-- **WHEN** se envía el registro con un `passwordConfirmation` distinto de `password`
+- **WHEN** se envía el registro con un `passwordConfirmation` de longitud válida pero distinto de `password`
 - **THEN** la respuesta es 422 con un error de regla `sameAs` sobre el campo `passwordConfirmation`
 
 ### Requirement: Email único por cuenta
@@ -97,8 +97,8 @@ El sistema SHALL rechazar con 422 los inicios de sesión sin `email` o `password
 
 #### Scenario: Campos ausentes
 
-- **WHEN** se envía el inicio de sesión sin cuerpo, o con `password` ausente o vacía
-- **THEN** la respuesta es 422 con un error de regla `required` por cada campo ausente
+- **WHEN** se envía el inicio de sesión sin cuerpo, o con `email` o `password` ausentes o vacíos
+- **THEN** la respuesta es 422 con un error de regla `required` por cada campo ausente o vacío
 
 #### Scenario: Email con formato inválido
 
@@ -121,7 +121,7 @@ El sistema SHALL incluir en cada usuario devuelto un campo `initials` en mayúsc
 #### Scenario: Nombre de dos palabras o más
 
 - **WHEN** se devuelve un usuario con `fullName` "Ada Lovelace" (o "Ana María Pérez")
-- **THEN** `initials` contiene la primera letra de las dos primeras palabras: "AL" (o "AM")
+- **THEN** `initials` contiene la primera letra de las dos primeras palabras, separadas por un único espacio: "AL" (o "AM")
 
 #### Scenario: Nombre de una sola palabra
 
@@ -149,8 +149,8 @@ El sistema SHALL responder 401 con el mensaje "Unauthorized access" a cualquier 
 
 #### Scenario: Rutas públicas
 
-- **WHEN** se envía una petición de registro o de inicio de sesión sin `Authorization`
-- **THEN** la petición se procesa con normalidad y no se responde 401
+- **WHEN** se envía una petición de registro o de inicio de sesión sin `Authorization`, o con un token inválido en esa cabecera
+- **THEN** la petición se procesa con normalidad (200 si los datos son correctos) y el token inválido se ignora
 
 ### Requirement: Cierre de sesión
 
@@ -171,7 +171,7 @@ El sistema SHALL invalidar el token usado cuando reciba `POST /api/v1/account/lo
 - **WHEN** una cuenta con dos tokens vigentes cierra sesión con uno de ellos
 - **THEN** el otro token sigue permitiendo consultar el perfil
 
-### Requirement: Respuestas siempre en JSON
+### Requirement: Respuestas de autenticación en JSON
 
 El sistema SHALL responder en JSON a las peticiones de autenticación, incluidas las respuestas de error, aunque la petición pida otro tipo de contenido.
 
@@ -204,9 +204,14 @@ La aplicación SHALL ofrecer en `/register` un formulario con los campos "Nombre
 - **WHEN** una persona se registra con un email que ya tiene cuenta
 - **THEN** ve bajo el campo "Email" el mensaje "Ese email ya está registrado. Inicia sesión en su lugar."
 
+#### Scenario: Contraseña demasiado larga
+
+- **WHEN** una persona se registra con una contraseña de más de 32 caracteres repetida igual en "Repite la contraseña"
+- **THEN** ve bajo "Contraseña" el mensaje "la contraseña no puede superar los 32 caracteres."
+
 #### Scenario: Contraseña demasiado corta
 
-- **WHEN** una persona se registra con una contraseña de menos de 8 caracteres
+- **WHEN** una persona se registra con una contraseña de menos de 8 caracteres repetida igual en "Repite la contraseña"
 - **THEN** ve bajo "Contraseña" y bajo "Repite la contraseña" un mensaje en castellano que indica la longitud mínima exigida
 
 ### Requirement: Pantalla de inicio de sesión
@@ -228,6 +233,11 @@ La aplicación SHALL ofrecer en `/login` un formulario con los campos "Email" y 
 - **WHEN** una persona pulsa "Entrar" con un email que no tiene formato de dirección
 - **THEN** ve bajo el campo "Email" el mensaje "Introduce una dirección de email válida."
 
+#### Scenario: Campos vacíos
+
+- **WHEN** una persona pulsa "Entrar" con el email y la contraseña vacíos
+- **THEN** ve bajo "Email" el mensaje "Falta rellenar el email." y bajo "Contraseña" el mensaje "Falta rellenar la contraseña."
+
 ### Requirement: Errores de conexión y del servidor en los formularios
 
 Las pantallas de registro y de inicio de sesión SHALL mostrar en un aviso general, en castellano, los fallos que no corresponden a un campo visible del formulario.
@@ -239,7 +249,7 @@ Las pantallas de registro y de inicio de sesión SHALL mostrar en un aviso gener
 
 #### Scenario: Error interno del servidor
 
-- **WHEN** una persona envía el formulario y el servidor responde con un error interno
+- **WHEN** una persona envía el formulario y el servidor responde con un error interno o con cualquier otro error inesperado
 - **THEN** ve el aviso "Algo ha ido mal en el servidor. Inténtalo de nuevo en un momento."
 
 ### Requirement: Estado de envío de los formularios
@@ -306,12 +316,12 @@ La aplicación SHALL conservar la sesión abierta al recargar la página y SHALL
 #### Scenario: Servidor inaccesible al recargar
 
 - **WHEN** una persona recarga la página y el servidor no responde
-- **THEN** es llevada a `/login` con un aviso que explica el fallo, y al recargar de nuevo cuando el servidor vuelve a responder recupera su sesión sin volver a introducir sus credenciales
+- **THEN** es llevada a `/login` con el aviso "No se pudo conectar con el servidor. Comprueba que el backend está arrancado." (o "Algo ha ido mal en el servidor. Inténtalo de nuevo en un momento." si el servidor responde con un error), y al recargar de nuevo cuando el servidor vuelve a responder recupera su sesión sin volver a introducir sus credenciales
 
 #### Scenario: Aviso de sesión perdida
 
-- **WHEN** una persona ve en `/login` el aviso de sesión perdida y vuelve a iniciar sesión con éxito
-- **THEN** el aviso desaparece
+- **WHEN** una persona ve en `/login` el aviso de sesión perdida, inicia sesión con éxito y después cierra sesión
+- **THEN** vuelve a `/login` sin ningún aviso
 
 ### Requirement: Acceso a pantallas según el estado de sesión
 
