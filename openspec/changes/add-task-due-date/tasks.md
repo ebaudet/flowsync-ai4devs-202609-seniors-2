@@ -37,4 +37,4 @@
 ## 5. Cierre
 
 - [x] 5.1 Revisión manual de los escenarios de la spec delta con backend y frontend arrancados (cambio de día de referencia simulado con `X-Client-Date`) y anotar cualquier desviación antes de abrir el PR
-- [ ] 5.2 Cerrar según las reglas del repo: `/commit`, `gh pr create` con la descripción completa de los cambios y pasar el subagente `adversarial-reviewer` sobre el PR; verificar que existe la URL del PR
+- [x] 5.2 Cerrar según las reglas del repo: `/commit`, `gh pr create` con la descripción completa de los cambios y pasar el subagente `adversarial-reviewer` sobre el PR; verificar que existe la URL del PR
