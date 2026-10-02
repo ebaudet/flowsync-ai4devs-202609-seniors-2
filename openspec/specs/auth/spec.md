@@ -187,7 +187,7 @@ La aplicación SHALL ofrecer en `/register` un formulario con los campos "Nombre
 #### Scenario: Registro correcto
 
 - **WHEN** una persona sin sesión rellena el formulario con datos válidos y pulsa "Crear cuenta"
-- **THEN** queda con la sesión abierta y ve su pantalla de perfil
+- **THEN** queda con la sesión abierta y ve la lista de tareas
 
 #### Scenario: Nombre en blanco
 
@@ -221,7 +221,7 @@ La aplicación SHALL ofrecer en `/login` un formulario con los campos "Email" y 
 #### Scenario: Inicio de sesión correcto
 
 - **WHEN** una persona sin sesión introduce el email y la contraseña de su cuenta y pulsa "Entrar"
-- **THEN** queda con la sesión abierta y ve su pantalla de perfil
+- **THEN** queda con la sesión abierta y ve la lista de tareas
 
 #### Scenario: Credenciales incorrectas
 
@@ -268,7 +268,7 @@ Las pantallas de registro y de inicio de sesión SHALL deshabilitar su botón de
 
 ### Requirement: Pantalla de perfil
 
-La aplicación SHALL mostrar en `/profile` a la persona con sesión abierta sus iniciales, su nombre (o "Sin nombre" si no lo tiene), su email, la fecha "Miembro desde" en formato largo en castellano y un botón "Cerrar sesión".
+La aplicación SHALL mostrar en `/profile` a la persona con sesión abierta sus iniciales, su nombre (o "Sin nombre" si no lo tiene), su email, la fecha "Miembro desde" en formato largo en castellano, un enlace "Volver a las tareas" hacia la lista y un botón "Cerrar sesión".
 
 #### Scenario: Perfil con nombre
 
@@ -279,6 +279,11 @@ La aplicación SHALL mostrar en `/profile` a la persona con sesión abierta sus 
 
 - **WHEN** abre `/profile` una persona cuya cuenta no tiene nombre
 - **THEN** ve "Sin nombre" como nombre, junto con sus iniciales y su email
+
+#### Scenario: Volver a la lista
+
+- **WHEN** una persona con sesión abierta pulsa "Volver a las tareas" en su perfil
+- **THEN** ve la lista de tareas en `/tasks`
 
 ### Requirement: Cierre de sesión desde la aplicación
 
@@ -325,24 +330,29 @@ La aplicación SHALL conservar la sesión abierta al recargar la página y SHALL
 
 ### Requirement: Acceso a pantallas según el estado de sesión
 
-La aplicación SHALL restringir `/profile` a las personas con sesión abierta, SHALL restringir `/login` y `/register` a las personas sin sesión y SHALL llevar cualquier otra dirección al perfil.
+La aplicación SHALL restringir `/tasks` y `/profile` a las personas con sesión abierta, SHALL restringir `/login` y `/register` a las personas sin sesión y SHALL llevar cualquier otra dirección a la lista de tareas.
 
 #### Scenario: Perfil sin sesión
 
 - **WHEN** una persona sin sesión abre `/profile`
 - **THEN** es llevada a `/login`
 
+#### Scenario: Lista sin sesión
+
+- **WHEN** una persona sin sesión abre `/tasks`
+- **THEN** es llevada a `/login` y no ve ninguna tarea
+
 #### Scenario: Acceso o registro con sesión abierta
 
 - **WHEN** una persona con sesión abierta abre `/login` o `/register`
-- **THEN** es llevada a `/profile`
+- **THEN** es llevada a `/tasks`
 
 #### Scenario: Dirección desconocida
 
 - **WHEN** una persona abre una dirección que no existe en la aplicación
-- **THEN** es llevada a `/profile`, y desde allí a `/login` si no tiene sesión
+- **THEN** es llevada a `/tasks`, y desde allí a `/login` si no tiene sesión
 
 #### Scenario: Comprobación de sesión en curso
 
-- **WHEN** la aplicación está comprobando una sesión guardada y la persona está en `/profile`, `/login` o `/register`
+- **WHEN** la aplicación está comprobando una sesión guardada y la persona está en `/tasks`, `/profile`, `/login` o `/register`
 - **THEN** ve el indicador de carga y no es redirigida hasta que se conozca el resultado
