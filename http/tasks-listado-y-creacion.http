@@ -1,0 +1,76 @@
+@baseUrl = http://localhost:3333/api/v1
+
+# Tareas: listado, creación y forma del JSON. Con la base vacía, ejecútalo de arriba abajo.
+
+### Sesión de Ada (cuenta con nombre; créala antes con 00-cuentas.http)
+# @name loginAda
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "ada@x.com", "password": "password123" }
+
+###
+@tokenAda = {{loginAda.response.body.data.token}}
+
+### Sesión de Grace (cuenta sin nombre)
+# @name loginGrace
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "grace@x.com", "password": "password123" }
+
+###
+@tokenGrace = {{loginGrace.response.body.data.token}}
+
+### 1. Lista vacía (solo con la base sin tareas)
+# Esperado: 200, data: []
+GET {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+### 2. Crear solo con title; los espacios se recortan
+# Esperado: 201, status pending, assignee.fullName "Ada Lovelace", título sin espacios en los extremos
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "  Revisar el despliegue  " }
+
+### 3. Crear con la cuenta sin nombre
+# Esperado: 201, assignee.fullName null
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenGrace}}
+
+{ "title": "Tarea de Grace" }
+
+### 4. Datos extra ignorados
+# Esperado: 201, status pending y responsable Ada
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "Con extras", "status": "done", "assignee": { "fullName": "X" }, "assigneeId": 2, "dueDate": "2026-12-01" }
+
+### 5. Lista con 3 tareas, vista por Grace
+# Esperado: 200 con las 3 tareas (incluidas las de Ada)
+GET {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenGrace}}
+
+### 6. Misma lista vista por Ada (debe ser idéntica a la anterior)
+# Esperado: 200, mismo conjunto que la petición 5
+GET {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+# 7. Forma del JSON: cada tarea tiene solo id, title, status y assignee: { fullName };
+#    nunca email, id de usuario ni fechas. Compruébalo en las respuestas 5 y 6.

@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:3333/api/v1
+
+# Tareas: operaciones que NO deben existir (solo hay listar, crear y cambiar el estado).
+
+### Sesión de Ada (cuenta con nombre; créala antes con 00-cuentas.http)
+# @name loginAda
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "ada@x.com", "password": "password123" }
+
+###
+@tokenAda = {{loginAda.response.body.data.token}}
+
+### Sesión de Grace (cuenta sin nombre)
+# @name loginGrace
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "grace@x.com", "password": "password123" }
+
+###
+@tokenGrace = {{loginGrace.response.body.data.token}}
+
+### GET de una tarea concreta
+# Esperado: 404 (ruta no encontrada)
+GET {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+### DELETE de una tarea
+# Esperado: 404 y la tarea sigue en la lista
+DELETE {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+

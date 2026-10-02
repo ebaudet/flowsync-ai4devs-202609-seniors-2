@@ -1,0 +1,116 @@
+@baseUrl = http://localhost:3333/api/v1
+
+# Tareas: cambio de estado con PATCH /tasks/:id. Supone que existe la tarea 1 (créala con tasks-listado-y-creacion.http).
+
+### Sesión de Ada (cuenta con nombre; créala antes con 00-cuentas.http)
+# @name loginAda
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "ada@x.com", "password": "password123" }
+
+###
+@tokenAda = {{loginAda.response.body.data.token}}
+
+### Sesión de Grace (cuenta sin nombre)
+# @name loginGrace
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "grace@x.com", "password": "password123" }
+
+###
+@tokenGrace = {{loginGrace.response.body.data.token}}
+
+### Estado válido: in_progress
+# Esperado: 200, status in_progress
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "in_progress" }
+
+### Estado válido: done
+# Esperado: 200, status done
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "done" }
+
+### Estado válido: pending
+# Esperado: 200, status pending
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "pending" }
+
+### Estado desconocido
+# Esperado: 422, regla enum sobre status; la tarea no cambia
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "pendiente" }
+
+### Sin status
+# Esperado: 422, required
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{}
+
+### status null
+# Esperado: 422, required
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": null }
+
+### status vacío
+# Esperado: 422, required
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "" }
+
+### Tarea de otra cuenta (Grace cambia la de Ada)
+# Esperado: 200: no hay comprobación de propiedad
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenGrace}}
+
+{ "status": "done" }
+
+### Con title y assignee de más: solo cambia el estado
+# Esperado: 200, status in_progress; título y responsable intactos
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenGrace}}
+
+{ "status": "in_progress", "title": "HACK", "assignee": { "fullName": "Z" }, "assigneeId": 3 }
+
+### Id inexistente
+# Esperado: 404
+PATCH {{baseUrl}}/tasks/999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "done" }
+
