@@ -43,6 +43,7 @@ const FIELD_LABELS: Record<string, string> = {
   password: 'la contraseña',
   passwordConfirmation: 'la confirmación de la contraseña',
   title: 'el título',
+  dueDate: 'la fecha',
 }
 
 const label = (field?: string) => FIELD_LABELS[field ?? ''] ?? 'el campo'
@@ -65,6 +66,8 @@ function translate(error: BackendError): string {
       return 'Introduce una dirección de email válida.'
     case 'required':
       return `Falta rellenar ${label(field)}.`
+    case 'calendarDay':
+      return 'Introduce una fecha válida.'
     case 'minLength':
       return `${label(field)} debe tener al menos ${meta?.min} caracteres.`
     case 'maxLength':
@@ -85,6 +88,10 @@ function toApiError(status: number, body: unknown): ApiError {
       'Tu sesión ha caducado. Vuelve a iniciar sesión.',
       status,
     )
+  }
+
+  if (status === 404) {
+    return new ApiError('No se encontró la tarea.', status)
   }
 
   // `User.verifyCredentials` lanza E_INVALID_CREDENTIALS con un 400 sin `field`.
@@ -109,6 +116,16 @@ function toApiError(status: number, body: unknown): ApiError {
   )
 }
 
+/**
+ * Día de calendario local de la persona (`YYYY-MM-DD`). No vale `toISOString()`:
+ * da el día UTC y daría el veredicto de vencimiento de otro huso.
+ */
+function localDay(now = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH'
   body?: unknown
@@ -122,6 +139,8 @@ async function request<T>(
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
+  // El backend decide si una tarea está vencida con el día de quien la mira.
+  if (path.startsWith('/api/v1/tasks')) headers['X-Client-Date'] = localDay()
 
   let response: Response
   try {
@@ -195,6 +214,25 @@ export function updateTaskStatus(
   return request<{ data: Task }>(`/api/v1/tasks/${id}`, {
     method: 'PATCH',
     body: { status },
+    token,
+  }).then((response) => response.data)
+}
+
+export function getTask(token: string, id: number): Promise<Task> {
+  return request<{ data: Task }>(`/api/v1/tasks/${id}`, { token }).then(
+    (response) => response.data,
+  )
+}
+
+/** `null` quita la fecha: el backend distingue «vacía» de «no enviada». */
+export function updateTaskDueDate(
+  token: string,
+  id: number,
+  dueDate: string | null,
+): Promise<Task> {
+  return request<{ data: Task }>(`/api/v1/tasks/${id}`, {
+    method: 'PATCH',
+    body: { dueDate },
     token,
   }).then((response) => response.data)
 }

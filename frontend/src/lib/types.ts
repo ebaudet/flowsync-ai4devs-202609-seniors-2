@@ -45,11 +45,15 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 
 /**
  * Espejo de `TaskTransformer` del backend (app/transformers/task_transformer.ts).
- * Sin fechas ni datos de cuenta del responsable: la API no los expone.
+ * `dueDate` es un día de calendario `YYYY-MM-DD` (o `null`) y `isOverdue` lo
+ * decide el backend con el día de quien mira: el cliente nunca lo calcula.
+ * Sin datos de cuenta del responsable: la API no los expone.
  */
 export type Task = {
   id: number
   title: string
   status: TaskStatus
+  dueDate: string | null
+  isOverdue: boolean
   assignee: { fullName: string | null }
 }

@@ -28,10 +28,10 @@ Estado actual observado (motivación en `proposal.md`):
 
 Migración nueva `alterTable('tasks')` que añade `table.date('due_date').nullable()`; `down()` la elimina. Al ser nullable, las filas existentes siguen siendo válidas sin backfill. `node ace migration:run` regenera `database/schema.ts`, que se commitea sin editar a mano.
 
-Por defecto el generador mapea `date` a `DateTime` de luxon (`@column.date`), y un `DateTime` arrastra huso: justo lo que una fecha de calendario no debe tener (CA-19: «la fecha no se mueve según quien mira»). Se añade en `schema_rules.ts` una regla para `tasks.due_date` con `tsType: 'string | null'` y `@column()` plano, igual que ya se hace con `status`. Así el valor entra y sale como cadena `YYYY-MM-DD` y las comparaciones son de cadenas ISO, que ordenan igual que las fechas.
+Por defecto el generador mapea `date` a `DateTime` de luxon (`@column.date`), y un `DateTime` arrastra huso: justo lo que una fecha de calendario no debe tener (CA-19: «la fecha no se mueve según quien mira»). Se añade en `schema_rules.ts` una regla para `tasks.due_date` con `tsType: 'string'` y `@column()` plano, igual que ya se hace con `status` (el generador añade `| null` por ser la columna nullable). Así el valor entra y sale como cadena `YYYY-MM-DD` y las comparaciones son de cadenas ISO, que ordenan igual que las fechas.
 
 - *Alternativas*: `DateTime` con `zone: 'utc'` (riesgo de desplazar el día al serializar); marca de tiempo al final del día (inventa una hora que el producto no tiene). Se descartan.
-- Verificar en el `.d.ts`/salida generada que la regla produce `string | null`; si el generador no admite `null` en `tsType`, estrechar en el modelo.
+- Verificado al implementar: `database/schema.ts` queda con `declare dueDate: string | null`.
 
 ### 2. La regla vive en el modelo y solo allí
 

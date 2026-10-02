@@ -56,7 +56,7 @@ Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{tokenAda}}
 
-{ "title": "Con extras", "status": "done", "assignee": { "fullName": "X" }, "assigneeId": 2, "dueDate": "2026-12-01" }
+{ "title": "Con extras", "status": "done", "assignee": { "fullName": "X" }, "assigneeId": 2, "isOverdue": true }
 
 ### 5. Lista con 3 tareas, vista por Grace
 # Esperado: 200 con las 3 tareas (incluidas las de Ada)
@@ -72,5 +72,5 @@ Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{tokenAda}}
 
-# 7. Forma del JSON: cada tarea tiene solo id, title, status y assignee: { fullName };
-#    nunca email, id de usuario ni fechas. Compruébalo en las respuestas 5 y 6.
+# 7. Forma del JSON: cada tarea tiene solo id, title, status, dueDate, isOverdue y
+#    assignee: { fullName }; nunca email, id de usuario ni marcas de creación. Compruébalo en las respuestas 5 y 6.
