@@ -1,0 +1,21 @@
+# Alta de las dos cuentas de prueba que usan el resto de ficheros.
+# Ejecútalo una sola vez por base de datos: repetirlo da 422 (email ya registrado).
+# Para empezar de cero: `cd backend && node ace migration:fresh`.
+
+@baseUrl = http://localhost:3333/api/v1
+
+### Ada: cuenta con nombre
+# Esperado: 200 con { data: { user, token } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+Accept: application/json
+
+{ "fullName": "Ada Lovelace", "email": "ada@x.com", "password": "password123", "passwordConfirmation": "password123" }
+
+### Grace: cuenta sin nombre (la clave fullName viaja siempre, aunque sea null)
+# Esperado: 200 con { data: { user, token } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+Accept: application/json
+
+{ "fullName": null, "email": "grace@x.com", "password": "password123", "passwordConfirmation": "password123" }

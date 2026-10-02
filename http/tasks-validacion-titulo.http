@@ -1,0 +1,87 @@
+@baseUrl = http://localhost:3333/api/v1
+
+# Tareas: validación del título al crear. Todos los casos inválidos devuelven 422 y no crean nada.
+
+### Sesión de Ada (cuenta con nombre; créala antes con 00-cuentas.http)
+# @name loginAda
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "ada@x.com", "password": "password123" }
+
+###
+@tokenAda = {{loginAda.response.body.data.token}}
+
+### Sesión de Grace (cuenta sin nombre)
+# @name loginGrace
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "grace@x.com", "password": "password123" }
+
+###
+@tokenGrace = {{loginGrace.response.body.data.token}}
+
+### 1. Sin cuerpo
+# Esperado: 422, regla required sobre title
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+### 2. Sin title
+# Esperado: 422, required
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{}
+
+### 3. title null
+# Esperado: 422, required
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": null }
+
+### 4. title vacío
+# Esperado: 422, required
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "" }
+
+### 5. title solo con espacios
+# Esperado: 422, error sobre title
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "   " }
+
+### 6. title de 256 caracteres
+# Esperado: 422, regla maxLength (max 255); no se guarda ni recortado
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+
+### 7. title de 255 caracteres (el límite)
+# Esperado: 201, título guardado completo
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+

@@ -1,0 +1,50 @@
+# Tareas: protección con token. Las tres operaciones sin Authorization devuelven 401.
+
+@baseUrl = http://localhost:3333/api/v1
+
+### GET sin Authorization
+# Esperado: 401 "Unauthorized access"
+GET {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+### POST sin Authorization
+# Esperado: 401, no se crea nada
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+{ "title": "x" }
+
+### PATCH sin Authorization
+# Esperado: 401, no se modifica nada
+PATCH {{baseUrl}}/tasks/1
+Content-Type: application/json
+Accept: application/json
+
+{ "status": "done" }
+
+### Sesión que se va a cerrar (inicia sesión con Grace)
+# @name loginGraceTemp
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "grace@x.com", "password": "password123" }
+
+###
+@tokenTemp = {{loginGraceTemp.response.body.data.token}}
+
+### Cerrar esa sesión
+# Esperado: 200 "Logged out successfully"
+POST {{baseUrl}}/account/logout
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenTemp}}
+
+### GET /tasks con el token ya cerrado
+# Esperado: 401
+GET {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenTemp}}

@@ -30,3 +30,26 @@ export type LoginPayload = {
   email: string
   password: string
 }
+
+/**
+ * Estados de una tarea. Son los identificadores de la API; el castellano que
+ * ve la persona sale solo de `TASK_STATUS_LABEL`.
+ */
+export type TaskStatus = 'pending' | 'in_progress' | 'done'
+
+export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+  pending: 'Pendiente',
+  in_progress: 'En curso',
+  done: 'Hecho',
+}
+
+/**
+ * Espejo de `TaskTransformer` del backend (app/transformers/task_transformer.ts).
+ * Sin fechas ni datos de cuenta del responsable: la API no los expone.
+ */
+export type Task = {
+  id: number
+  title: string
+  status: TaskStatus
+  assignee: { fullName: string | null }
+}
