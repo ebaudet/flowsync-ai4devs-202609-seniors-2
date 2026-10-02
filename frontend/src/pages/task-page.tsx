@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { AlertCircleIcon, AlertTriangleIcon, Loader2Icon } from 'lucide-react'
 import { useAuth } from '@/auth/use-auth'
@@ -31,6 +31,9 @@ const errorMessage = (error: unknown) =>
 const isCompleteDay = (value: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(value) && Number(value.slice(0, 4)) >= 1000
 
+/** Espera tras el último cambio antes de guardar: teclear una fecha la completa varias veces. */
+const SAVE_DELAY_MS = 600
+
 /**
  * Tarea abierta: esqueleto mínimo del futuro detalle (PA-6). Solo permite
  * poner, cambiar y quitar la fecha, y enseña si está vencida según el backend.
@@ -45,6 +48,8 @@ export function TaskPage() {
   const [draft, setDraft] = useState('')
   const [dateError, setDateError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Fecha que el servidor tiene guardada ahora mismo.
+  const savedRef = useRef<string | null>(null)
 
   useEffect(() => {
     // `ProtectedRoute` garantiza la sesión; sin token no hay nada que pedir.
@@ -56,6 +61,7 @@ export function TaskPage() {
       .getTask(token, taskId)
       .then((loaded) => {
         if (cancelled) return
+        savedRef.current = loaded.dueDate
         setTask(loaded)
         setDraft(loaded.dueDate ?? '')
       })
@@ -68,36 +74,87 @@ export function TaskPage() {
     }
   }, [token, taskId])
 
+  // Fecha completa a la espera de guardarse, su temporizador y el número del
+  // último guardado: una respuesta de un guardado anterior no pisa a la última.
+  const pendingRef = useRef<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const seqRef = useRef(0)
+
   const saveDueDate = useCallback(
     async (dueDate: string | null) => {
-      if (!token || !task || saving) return
+      if (!token) return
 
+      const seq = ++seqRef.current
       setSaving(true)
       setDateError(null)
 
       try {
         // La respuesta trae también `isOverdue`: la señal sale de ahí.
-        const updated = await api.updateTaskDueDate(token, task.id, dueDate)
+        const updated = await api.updateTaskDueDate(token, taskId, dueDate)
+        if (seq !== seqRef.current) return
+        savedRef.current = updated.dueDate
         setTask(updated)
         setDraft(updated.dueDate ?? '')
       } catch (error) {
+        if (seq !== seqRef.current) return
         // Con error la tarea conserva la fecha que tuviera.
-        setDraft(task.dueDate ?? '')
+        setDraft(savedRef.current ?? '')
         setDateError(
           error instanceof ApiError
             ? (error.fieldErrors.dueDate ?? error.message)
             : errorMessage(error),
         )
       } finally {
-        setSaving(false)
+        if (seq === seqRef.current) setSaving(false)
       }
     },
-    [token, task, saving],
+    [token, taskId],
+  )
+
+  const flushPending = useCallback(() => {
+    clearTimeout(timerRef.current)
+    const pending = pendingRef.current
+    pendingRef.current = null
+    if (pending !== null) void saveDueDate(pending)
+  }, [saveDueDate])
+
+  // Cerrar la tarea con un cambio sin enviar todavía no lo pierde.
+  useEffect(
+    () => () => {
+      clearTimeout(timerRef.current)
+      if (token && pendingRef.current !== null) {
+        void api
+          .updateTaskDueDate(token, taskId, pendingRef.current)
+          .catch(() => undefined)
+      }
+    },
+    [token, taskId],
   )
 
   const handleDateChange = (value: string) => {
     setDraft(value)
-    if (isCompleteDay(value) && value !== task?.dueDate) void saveDueDate(value)
+    clearTimeout(timerRef.current)
+    pendingRef.current = null
+
+    if (isCompleteDay(value) && value !== savedRef.current) {
+      pendingRef.current = value
+      timerRef.current = setTimeout(flushPending, SAVE_DELAY_MS)
+    }
+  }
+
+  const handleDateBlur = () => {
+    if (pendingRef.current !== null) {
+      flushPending()
+    } else if (!saving) {
+      // Un campo dejado a medias no quita la fecha: vuelve a la guardada.
+      setDraft(savedRef.current ?? '')
+    }
+  }
+
+  const handleRemove = () => {
+    clearTimeout(timerRef.current)
+    pendingRef.current = null
+    void saveDueDate(null)
   }
 
   return (
@@ -156,19 +213,17 @@ export function TaskPage() {
                     max="9999-12-31"
                     className="w-auto"
                     value={draft}
-                    disabled={saving}
                     aria-invalid={dateError ? true : undefined}
                     aria-describedby={dateError ? 'dueDate-error' : undefined}
                     onChange={(event) => handleDateChange(event.target.value)}
-                    // Un campo dejado a medias no quita la fecha: vuelve a la guardada.
-                    onBlur={() => setDraft(task.dueDate ?? '')}
+                    onBlur={handleDateBlur}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={saving || !task.dueDate}
-                    onClick={() => void saveDueDate(null)}
+                    onClick={handleRemove}
                   >
                     Quitar fecha
                   </Button>
