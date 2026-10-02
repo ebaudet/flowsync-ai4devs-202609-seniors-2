@@ -47,9 +47,6 @@ const FIELD_LABELS: Record<string, string> = {
 
 const label = (field?: string) => FIELD_LABELS[field ?? ''] ?? 'el campo'
 
-const capitalize = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1)
-
 /**
  * Traduce un error de VineJS a una frase que el usuario pueda entender.
  * Cubre todas las reglas que usa `app/validators/user.ts` en el backend.
@@ -69,9 +66,9 @@ function translate(error: BackendError): string {
     case 'required':
       return `Falta rellenar ${label(field)}.`
     case 'minLength':
-      return `${capitalize(label(field))} debe tener al menos ${meta?.min} caracteres.`
+      return `${label(field)} debe tener al menos ${meta?.min} caracteres.`
     case 'maxLength':
-      return `${capitalize(label(field))} no puede superar los ${meta?.max} caracteres.`
+      return `${label(field)} no puede superar los ${meta?.max} caracteres.`
     default:
       return `Revisa ${label(field)}.`
   }
