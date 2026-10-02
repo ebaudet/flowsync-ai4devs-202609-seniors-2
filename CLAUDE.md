@@ -100,7 +100,10 @@ Rutas actuales (`start/routes.ts`), todas bajo `/api/v1`:
 | POST | `/api/v1/account/logout` | `AccessTokensController.destroy` | sí |
 | GET | `/api/v1/tasks` | `TasksController.index` | sí |
 | POST | `/api/v1/tasks` | `TasksController.store` | sí |
+| GET | `/api/v1/tasks/:id` | `TasksController.show` | sí |
 | PATCH | `/api/v1/tasks/:id` | `TasksController.update` | sí |
+
+Una tarea se representa como `{ id, title, status, dueDate, isOverdue, assignee }`. `dueDate` es un día de calendario `YYYY-MM-DD` (columna `date` tratada como texto, sin huso) o `null`; quitarla es enviarla vacía (`null` o `""`) en el `PATCH`. `isOverdue` no se guarda ni se acepta como entrada: lo calcula `Task.isOverdueOn(today)` en cada lectura (fecha anterior a hoy y estado distinto de `done`) con el día que manda el cliente en la cabecera `X-Client-Date` (sin ella, el día UTC del servidor; mal formada, 422). El día llega al transformer con `withReferenceDay()`.
 
 ### Validación
 

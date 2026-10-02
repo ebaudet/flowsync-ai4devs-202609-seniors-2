@@ -1,0 +1,243 @@
+@baseUrl = http://localhost:3333/api/v1
+
+# Tareas: fecha de vencimiento, tarea vencida (isOverdue) y lectura individual.
+# El día de referencia lo manda el cliente en X-Client-Date (YYYY-MM-DD); sin cabecera
+# se usa el día UTC del servidor. Ajusta las fechas de abajo al día en que lo pruebes.
+
+### Sesión de Ada (cuenta con nombre; créala antes con 00-cuentas.http)
+# @name loginAda
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{ "email": "ada@x.com", "password": "password123" }
+
+###
+@tokenAda = {{loginAda.response.body.data.token}}
+
+### 1. Crear sin fecha
+# Esperado: 201, dueDate null, isOverdue false
+# @name sinFecha
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "Tarea sin fecha" }
+
+###
+@id = {{sinFecha.response.body.data.id}}
+
+### 2. Leer la tarea
+# Esperado: 200, misma forma que en la lista
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+### 3. Leer una tarea inexistente
+# Esperado: 404
+GET {{baseUrl}}/tasks/999999
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+### 4. Leer sin sesión
+# Esperado: 401 "Unauthorized access"
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+
+### 5. Poner una fecha futura
+# Esperado: 200, dueDate "2099-01-01", isOverdue false
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "2099-01-01" }
+
+### 6. Poner una fecha pasada (se acepta)
+# Esperado: 200, dueDate "2020-01-01", isOverdue true
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "2020-01-01" }
+
+### 7. Hoy no vence todavía, mañana sí (el día lo pone quien mira)
+# Esperado: dueDate "2026-10-15"; con X-Client-Date 2026-10-15 isOverdue false
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-15
+
+{ "dueDate": "2026-10-15" }
+
+###
+# Esperado: isOverdue false (el mismo día)
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-15
+
+###
+# Esperado: isOverdue true (un día después, sin tocar la tarea)
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-16
+
+###
+# Esperado: isOverdue false (un huso donde todavía es el día anterior)
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-14
+
+### 8. Hecha nunca está vencida; al volver a pendiente, sí
+# Esperado: status done, isOverdue false, dueDate intacta
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-16
+
+{ "status": "done" }
+
+###
+# Esperado: status pending, isOverdue true
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-10-16
+
+{ "status": "pending" }
+
+### 9. Estado y fecha a la vez
+# Esperado: 200, in_progress y dueDate "2099-06-30"
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": "in_progress", "dueDate": "2099-06-30" }
+
+### 10. Quitar la fecha con null
+# Esperado: 200, dueDate null, isOverdue false
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": null }
+
+### 11. Quitar la fecha con cadena vacía
+# Esperado: 200, dueDate null (primero ponle una fecha con la petición 5)
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "" }
+
+### 12. Fecha inexistente
+# Esperado: 422, regla calendarDay sobre dueDate; la tarea no cambia
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "2026-02-30" }
+
+### 13. Fecha incompleta, con otro formato, con hora o de otro tipo
+# Esperado (las cuatro): 422 sobre dueDate
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "2026-10" }
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "15/10/2026" }
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": "2026-10-15T10:00:00Z" }
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "dueDate": 20261015 }
+
+### 14. Nada que cambiar
+# Esperado (las tres): 422 required; isOverdue no es entrada
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{}
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "isOverdue": true }
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "status": null }
+
+### 15. Cabecera X-Client-Date mal formada
+# Esperado (las dos): 422 sobre X-Client-Date; no se modifica nada
+GET {{baseUrl}}/tasks/{{id}}
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: ayer
+
+###
+PATCH {{baseUrl}}/tasks/{{id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+X-Client-Date: 2026-02-30
+
+{ "dueDate": "2099-01-01" }
+
+### 16. Crear con fecha (ya pasada: nace vencida)
+# Esperado: 201, dueDate "2020-01-01", isOverdue true; isOverdue enviado se ignora
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "Nace vencida", "dueDate": "2020-01-01", "isOverdue": false }
+
+### 17. Crear con fecha inexistente
+# Esperado: 422 sobre dueDate y no se crea la tarea
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tokenAda}}
+
+{ "title": "No se crea", "dueDate": "2026-02-30" }
