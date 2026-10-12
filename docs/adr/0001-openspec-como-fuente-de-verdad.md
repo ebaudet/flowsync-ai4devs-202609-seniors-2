@@ -2,6 +2,8 @@
 
 ## Estado
 
+**Reemplazada por el [ADR 0002](0002-tests-como-fuente-de-verdad-ejecutable.md)**, 2027-10-12. El contexto y la decisión de abajo se conservan tal y como se escribieron: son lo que se creía entonces.
+
 Aceptada, 2026-10-12, con una salvedad: se registra a posteriori y la práctica solo la ha cumplido en parte (ver «Lo que nos cuesta»). Los tres changes de `openspec/changes/archive/` llevan la fecha 2026-08-13 en su carpeta, pero dos de ellos se archivaron en un commit posterior al que los implementó.
 
 ## Contexto
