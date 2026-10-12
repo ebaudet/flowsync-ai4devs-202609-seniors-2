@@ -31,7 +31,7 @@ export default class TaskStatusesController {
   @ApiOperation({
     summary: 'Cambiar el estado de una tarea',
     description:
-      'Cualquier transición entre los tres estados, incluida la vuelta desde `done`, a cualquier cuenta con sesión, sea o no la responsable.',
+      'Cualquier transición entre los tres estados, incluida la vuelta desde `done`, a cualquier cuenta con sesión, sea o no la responsable. Aviso: hasta que se corrija `TaskTransformer`, el `assignee` de esta respuesta trae además `email`, `createdAt` y `updatedAt` de la cuenta; no son parte del contrato y no deben leerse.',
   })
   @ApiBody({ type: UpdateTaskStatusBody, required: true })
   @ApiResponse({ status: 200, description: 'La tarea con el estado nuevo.', type: TaskResponse })

@@ -49,14 +49,14 @@ export default class TasksController {
   @ApiOperation({
     summary: 'Lista de tareas del espacio',
     description:
-      'La misma lista para cualquier cuenta, de la más reciente a la más antigua y entera, sin paginar. Sin `status` devuelve las pendientes y las que están en curso; las hechas solo salen pidiéndolas. No lleva fecha de vencimiento ni `isOverdue`, y no pide `today`.',
+      'La misma lista para cualquier cuenta, de la más reciente a la más antigua y entera, sin paginar. Sin `status` devuelve las pendientes y las que están en curso; las hechas solo salen pidiéndolas. No lleva fecha de vencimiento ni `isOverdue`, y no pide `today`. Aviso: hasta que se corrija `TaskTransformer`, el `assignee` de esta respuesta trae además `email`, `createdAt` y `updatedAt` de la cuenta; no son parte del contrato y no deben leerse.',
   })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: [...TASK_STATUSES],
     description:
-      'Acota la lista a un único estado. Opcional: su ausencia es la vista por defecto, no «todas».',
+      'Acota la lista a un único estado. Opcional: su ausencia es la vista por defecto, no «todas». Hoy el valor no se valida contra estos tres: uno desconocido no se rechaza y responde `200` con lista vacía.',
   })
   @ApiResponse({
     status: 200,
@@ -126,7 +126,7 @@ export default class TasksController {
   @ApiOperation({
     summary: 'Crear una tarea',
     description:
-      'Solo se admite el título. La tarea nace pendiente, a nombre de quien la crea y sin fecha de vencimiento; cualquier otro valor del cuerpo se ignora.',
+      'Solo se admite el título. La tarea nace pendiente, a nombre de quien la crea y sin fecha de vencimiento; cualquier otro valor del cuerpo se ignora. Aviso: hasta que se corrija `TaskTransformer`, el `assignee` de esta respuesta trae además `email`, `createdAt` y `updatedAt` de la cuenta; no son parte del contrato y no deben leerse.',
   })
   @ApiBody({ type: CreateTaskBody, required: true })
   @ApiResponse({ status: 201, description: 'La tarea ya creada.', type: TaskResponse })

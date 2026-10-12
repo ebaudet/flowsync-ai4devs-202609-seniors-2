@@ -15,7 +15,16 @@ import { ApiProperty, ApiPropertyOptional } from '@foadonis/openapi/decorators'
 
 const CALENDAR_DAY = { type: 'string', format: 'date', example: '2026-09-30' } as const
 
-/** El responsable tal y como lo ve la lista: lo justo para identificarlo. */
+/**
+ * El responsable de una tarea: lo justo para identificarlo, sin email.
+ *
+ * Es lo que exige el requisito «Lo que cada tarea muestra de su responsable».
+ * Los esquemas no cierran las propiedades (`additionalProperties`), porque
+ * hasta que se integre la corrección de `TaskTransformer` el `assignee` de la
+ * lista, de la creación y del cambio de estado trae además `email`,
+ * `createdAt` y `updatedAt` de la cuenta. Esos campos NO son parte del
+ * contrato y ningún cliente debe leerlos.
+ */
 export class TaskAssignee {
   @ApiProperty({ type: 'integer' })
   declare id: number
@@ -27,7 +36,7 @@ export class TaskAssignee {
   declare initials: string
 }
 
-/** Una tarea tal y como la devuelve la lista, la creación y el cambio de estado. */
+/** Una tarea sin vencimiento: la forma de la lista, de la creación y del cambio de estado. */
 export class Task {
   @ApiProperty({ type: 'integer' })
   declare id: number
@@ -157,11 +166,18 @@ export class ErrorResponse {
   declare errors: ErrorItem[]
 }
 
-/** Formato del `404` de una tarea que no existe. */
+/**
+ * Formato del `404` de una tarea que no existe. Fuera de depuración el cuerpo es
+ * solo `{ "message": "Row not found" }`: `code` llega únicamente en desarrollo.
+ */
 export class NotFoundResponse {
   @ApiProperty({ type: 'string', example: 'Row not found' })
   declare message: string
 
-  @ApiProperty({ type: 'string', example: 'E_ROW_NOT_FOUND' })
+  @ApiPropertyOptional({
+    type: 'string',
+    example: 'E_ROW_NOT_FOUND',
+    description: 'Solo en modo depuración.',
+  })
   declare code: string
 }
