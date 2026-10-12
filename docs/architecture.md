@@ -6,15 +6,18 @@ El diagrama muestra los contenedores de FlowSync según el modelo C4: la SPA de 
 C4Container
     title FlowSync — diagrama de contenedores
 
-    Person(user, "Miembro del equipo", "Se registra, entra y gestiona las tareas")
+    Person(user, "Miembro del equipo", "Gestiona las tareas del espacio")
 
     System_Boundary(flowsync, "FlowSync") {
-        Container(spa, "SPA", "React 19, Vite 8", "Login, registro, lista y detalle de tareas, perfil. Todas las llamadas salen de src/lib/api.ts; las autenticadas llevan el token de localStorage en Authorization: Bearer")
-        Container(api, "API", "AdonisJS 7, Lucid 22", "Rutas /api/v1 hacia controladores, validadores VineJS, modelos User y Task y transformers. Access tokens opacos")
-        ContainerDb(db, "Base de datos", "SQLite", "backend/tmp/db.sqlite3: users, auth_access_tokens y tasks")
+        Container(spa, "SPA", "React 19, Vite 8", "Pantallas de login, registro, tareas y perfil. Llama a la API solo desde src/lib/api.ts")
+        Container(api, "API", "AdonisJS 7, Lucid 22", "Rutas /api/v1, controladores, validadores VineJS, modelos y transformers. Access tokens opacos")
+        ContainerDb(db, "Base de datos", "SQLite", "backend/tmp/db.sqlite3: users, auth_access_tokens, tasks")
     }
 
     Rel(user, spa, "Usa", "navegador")
     Rel(spa, api, "Llama", "JSON")
     Rel(api, db, "Lee y escribe", "Lucid")
+
+    UpdateRelStyle(user, spa, $offsetY="-45")
+    UpdateLayoutConfig($c4ShapeInRow="1", $c4BoundaryInRow="1")
 ```
