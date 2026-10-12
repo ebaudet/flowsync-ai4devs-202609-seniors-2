@@ -1,4 +1,4 @@
-import Task, { DEFAULT_LIST_STATUSES } from '#models/task'
+import Task, { DEFAULT_LIST_STATUSES, TASK_STATUSES } from '#models/task'
 import {
   createTaskValidator,
   listTasksValidator,
@@ -8,7 +8,28 @@ import {
 import type { HttpContext } from '@adonisjs/core/http'
 import TaskTransformer from '#transformers/task_transformer'
 import TaskDetailTransformer from '#transformers/task_detail_transformer'
+import {
+  CreateTaskBody,
+  ErrorResponse,
+  NotFoundResponse,
+  TaskDetailResponse,
+  TaskListResponse,
+  TaskResponse,
+} from '#openapi/schemas'
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+} from '@foadonis/openapi/decorators'
 
+@ApiBearerAuth()
+@ApiResponse({
+  status: 401,
+  description: 'Falta el token de acceso o no es válido. No se ejecuta nada.',
+  type: ErrorResponse,
+})
 export default class TasksController {
   /**
    * La lista del espacio: una sola, la misma para todo el mundo, sin filtrar
@@ -25,6 +46,23 @@ export default class TasksController {
    *
    * Acotar es solo lectura: ninguna tarea cambia por consultarla.
    */
+  @ApiOperation({
+    summary: 'Lista de tareas del espacio',
+    description:
+      'La misma lista para cualquier cuenta, de la más reciente a la más antigua y entera, sin paginar. Sin `status` devuelve las pendientes y las que están en curso; las hechas solo salen pidiéndolas. No lleva fecha de vencimiento ni `isOverdue`, y no pide `today`.',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: [...TASK_STATUSES],
+    description:
+      'Acota la lista a un único estado. Opcional: su ausencia es la vista por defecto, no «todas».',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Las tareas del alcance pedido; una lista vacía si no hay ninguna.',
+    type: TaskListResponse,
+  })
   async index({ request, serialize }: HttpContext) {
     const { status } = await request.validateUsing(listTasksValidator)
 
@@ -51,6 +89,28 @@ export default class TasksController {
    * Una tarea suelta, con todo lo que tiene: es la única lectura que informa
    * del vencimiento, y por eso es la única que exige el día de quien mira.
    */
+  @ApiOperation({
+    summary: 'Una tarea suelta',
+    description:
+      'Cualquier cuenta con sesión puede consultar cualquier tarea. Es la única lectura que informa del vencimiento, y por eso exige el día de quien mira.',
+  })
+  @ApiQuery({
+    name: 'today',
+    required: true,
+    schema: { type: 'string', format: 'date', example: '2026-09-30' },
+    description: 'El día de quien mira, `AAAA-MM-DD`. No tiene valor por defecto.',
+  })
+  @ApiResponse({ status: 200, description: 'La tarea.', type: TaskDetailResponse })
+  @ApiResponse({
+    status: 404,
+    description: 'La tarea no existe.',
+    type: NotFoundResponse,
+  })
+  @ApiResponse({
+    status: 422,
+    description: '`today` falta o no es una fecha válida.',
+    type: ErrorResponse,
+  })
   async show({ params, request, serialize }: HttpContext) {
     const { today } = await request.validateUsing(taskReferenceDayValidator)
     const task = await Task.findOrFail(params.id)
@@ -63,6 +123,18 @@ export default class TasksController {
    * Crear cuesta un título. El responsable y el estado no se leen de la
    * petición ni aunque vengan: los pone el sistema.
    */
+  @ApiOperation({
+    summary: 'Crear una tarea',
+    description:
+      'Solo se admite el título. La tarea nace pendiente, a nombre de quien la crea y sin fecha de vencimiento; cualquier otro valor del cuerpo se ignora.',
+  })
+  @ApiBody({ type: CreateTaskBody, required: true })
+  @ApiResponse({ status: 201, description: 'La tarea ya creada.', type: TaskResponse })
+  @ApiResponse({
+    status: 422,
+    description: 'El título falta, está vacío, es de solo espacios o supera los 200 caracteres.',
+    type: ErrorResponse,
+  })
   async store({ request, response, auth, serialize }: HttpContext) {
     const { title } = await request.validateUsing(createTaskValidator)
     const user = auth.getUserOrFail()
