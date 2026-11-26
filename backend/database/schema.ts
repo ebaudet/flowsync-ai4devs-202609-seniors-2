@@ -32,6 +32,23 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class CommentSchema extends BaseModel {
+  static $columns = ['authorId', 'body', 'createdAt', 'id', 'taskId', 'updatedAt'] as const
+  $columns = CommentSchema.$columns
+  @column()
+  declare authorId: number
+  @column()
+  declare body: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare taskId: number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class TaskSchema extends BaseModel {
   static $columns = ['assigneeId', 'createdAt', 'deletedAt', 'dueDate', 'id', 'status', 'title', 'updatedAt'] as const
   $columns = TaskSchema.$columns

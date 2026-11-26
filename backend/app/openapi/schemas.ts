@@ -149,6 +149,24 @@ export class TrashedTask {
 }
 
 /**
+ * El comentario tal y como lo devuelve su creación (`CommentTransformer`). El autor
+ * viaja con la misma forma mínima que el responsable de una tarea: nunca su email.
+ */
+export class Comment {
+  @ApiProperty({ type: 'number', example: 1 })
+  id!: number
+
+  @ApiProperty({ type: 'string', minLength: 1, maxLength: 500, example: 'Falta el informe' })
+  body!: string
+
+  @ApiProperty({ type: () => TaskAssignee })
+  author!: TaskAssignee
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
+  createdAt!: string
+}
+
+/**
  * El envoltorio `{ "data": ... }` que `providers/api_provider.ts` pone a toda
  * respuesta. Se documenta como parte de la forma porque el cliente lo tiene que
  * desenvolver.
@@ -156,6 +174,11 @@ export class TrashedTask {
 export class TaskResponse {
   @ApiProperty({ type: () => Task })
   data!: Task
+}
+
+export class CommentResponse {
+  @ApiProperty({ type: () => Comment })
+  data!: Comment
 }
 
 export class TaskListResponse {
@@ -192,6 +215,22 @@ export class CreateTaskBody {
       'Se recortan los espacios de los extremos antes de comprobar la longitud: un título de solo espacios se rechaza igual que uno vacío, y pasarse de 200 es un error, nunca un recorte.',
   })
   title!: string
+}
+
+/**
+ * Cuerpo de la creación de un comentario. El texto es el único dato que se acepta: el
+ * autor lo pone el sistema desde el token y se ignora aunque venga en la petición.
+ */
+export class CreateCommentBody {
+  @ApiProperty({
+    type: 'string',
+    minLength: 1,
+    maxLength: 500,
+    example: 'Falta el informe del trimestre',
+    description:
+      'Se recortan los espacios de los extremos antes de comprobar la longitud: un texto de solo espacios se rechaza igual que uno vacío, y pasarse de 500 es un error, nunca un recorte. Tampoco puede ser idéntico al último comentario de la misma cuenta en la misma tarea.',
+  })
+  body!: string
 }
 
 export class UpdateTaskStatusBody {

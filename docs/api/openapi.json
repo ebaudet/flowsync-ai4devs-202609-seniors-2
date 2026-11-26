@@ -364,6 +364,60 @@
           "dueDate",
           "today"
         ]
+      },
+      "CreateCommentBody": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "example": "Falta el informe del trimestre",
+            "description": "Se recortan los espacios de los extremos antes de comprobar la longitud: un texto de solo espacios se rechaza igual que uno vacío, y pasarse de 500 es un error, nunca un recorte. Tampoco puede ser idéntico al último comentario de la misma cuenta en la misma tarea."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "CommentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Comment"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "example": "Falta el informe"
+          },
+          "author": {
+            "$ref": "#/components/schemas/TaskAssignee"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "author",
+          "createdAt"
+        ]
       }
     }
   },
@@ -937,6 +991,81 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetTaskDueDateBody"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{id}/comments": {
+      "post": {
+        "summary": "Comentar una tarea",
+        "description": "Crea un comentario a nombre de la cuenta dueña del token y lo devuelve. El texto es el único dato que se lee: un `author`, `authorId` o `author_id` en el cuerpo se ignora. Se recortan los espacios de los extremos y el texto resultante tiene de 1 a 500 caracteres. Se rechaza con 422 un texto idéntico al último comentario de esa misma cuenta en esa misma tarea. Comentar no cambia ningún dato de la tarea. Se comprueba que la tarea existe antes que el cuerpo.",
+        "tags": [
+          "Comments"
+        ],
+        "responses": {
+          "201": {
+            "description": "El comentario ya creado, con su autor reducido a `id`, `fullName` e `initials`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta el token o no es válido. No se crea ningún comentario.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe ninguna tarea con ese identificador (o está en la papelera). Se comprueba antes que el cuerpo: con un cuerpo inválido sigue siendo 404.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El texto falta, está vacío, es solo espacios, pasa de 500 caracteres, o repite el último comentario de esta cuenta en esta tarea. El error apunta al campo `body` y no se crea nada ni se guarda una versión recortada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentBody"
               }
             }
           }
