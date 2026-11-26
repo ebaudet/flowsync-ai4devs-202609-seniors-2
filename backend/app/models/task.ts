@@ -1,4 +1,5 @@
 import User from '#models/user'
+import { DateTime } from 'luxon'
 import { beforeFetch, beforeFind, belongsTo } from '@adonisjs/lucid/orm'
 import { TaskSchema } from '#database/schema'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
@@ -54,26 +55,38 @@ export default class Task extends TaskSchema {
    * Si la tarea está vencida para quien mira desde `referenceDay`, un día del
    * calendario en formato `AAAA-MM-DD`.
    *
-   * Tres condiciones y ninguna más: hay fecha, esa fecha es **anterior** al día
-   * de referencia, y la tarea no está hecha. El `<` es estricto a propósito:
-   * vencer hoy todavía no es estar vencida, y un `<=` incumpliría esa regla sin
-   * que nada fallara ruidosamente.
+   * Tres condiciones a la vez y ninguna más (Requirement «Cuándo una tarea está
+   * vencida»): tiene fecha de vencimiento, esa fecha es **anterior** al día de
+   * referencia, y su estado no es `done`. Una tarea hecha no vence nunca, por
+   * pasada que esté su fecha. El `<` es estricto a propósito: vencer hoy todavía
+   * no es estar vencida, y un `<=` incumpliría esa regla sin que nada fallara
+   * ruidosamente.
    *
    * El día llega por parámetro y no de ningún reloj. Es lo que hace que dos
    * personas en husos distintos obtengan lecturas distintas y las dos sean
    * correctas, y que una tarea pase a vencida sola al cambiar el día sin que
    * nadie la haya tocado: no hay nada congelado, se decide al mirar.
    *
-   * Se compara texto contra texto porque dos fechas ISO comparadas así **son**
-   * la comparación de días del calendario: no hay hora, ni huso, ni instante
-   * intermedio donde se cuele un día de más.
+   * La fecha de vencimiento se pasa primero a texto `AAAA-MM-DD` y se compara
+   * texto contra texto, porque dos fechas ISO comparadas así **son** la
+   * comparación de días del calendario: no hay hora, ni huso, ni instante
+   * intermedio donde se cuele un día de más. Normalmente ya es texto (la
+   * conexión a Postgres entrega las columnas `DATE` sin convertirlas, ver
+   * `config/database.ts`), pero si llegara un `Date` se lee su día en hora local,
+   * que es como `pg` lo construye. Sin esta normalización, `Date < string` compara
+   * un número con `NaN` y da `false` siempre, sin avisar.
    *
    * Esta es la única definición de «vencida» del sistema. No se reimplementa en
    * ninguna otra capa, y en particular el frontend nunca compara fechas.
    */
   isOverdueOn(referenceDay: string): boolean {
+    if (this.status === 'done') return false
     if (this.dueDate === null) return false
 
-    return this.dueDate < referenceDay
+    const dueDay: string | Date = this.dueDate
+    const day =
+      typeof dueDay === 'string' ? dueDay : DateTime.fromJSDate(dueDay).toFormat('yyyy-MM-dd')
+
+    return day < referenceDay
   }
 }

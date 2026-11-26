@@ -1,5 +1,17 @@
 import env from '#start/env'
+// `pg` no trae tipos y `@types/pg` no es dependencia del proyecto: solo se usa aquí.
+// @ts-expect-error TS7016
+import pg from 'pg'
 import { defineConfig } from '@adonisjs/lucid'
+
+/**
+ * Las columnas `DATE` llegan como texto `AAAA-MM-DD`, tal como declara el esquema
+ * (`due_date: string`). Por defecto `pg` las convierte en un `Date` a medianoche
+ * local, y entonces `dueDate` deja de ser un día del calendario: la respuesta lo
+ * serializaría como un instante UTC (que puede caer en el día anterior) y la
+ * comparación de `Task.isOverdueOn` dejaría de ser texto contra texto.
+ */
+pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value)
 
 const dbConfig = defineConfig({
   /**
